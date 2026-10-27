@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  body { background: #1e1b4b; color: #fff; font-family: sans-serif; text-align: center; padding: 20px; }
+  .card { background: rgba(255,255,255,0.1); padding: 20px; border-radius: 15px; max-width: 400px; margin: auto; }
+  video { width: 100%; border-radius: 10px; transform: scaleX(-1); margin-top: 15px; background: #000; }
+  button { width: 100%; padding: 15px; margin-top: 10px; border: none; border-radius: 10px; font-size: 16px; font-weight: bold; }
+  .btn-go { background: #10b981; color: white; }
+  .btn-cancel { background: #4b5563; color: white; }
+  .hidden { display: none; }
+  .warning { color: #fbbf24; font-size: 14px; margin: 15px 0; text-align: left; }
+</style>
+</head>
+<body>
+<div class="card">
+  <h2>📸 {{ sender }} просит фото</h2>
+  <div id="step1">
+    <div class="warning">⚠️ Это пранк. Если разрешишь камеру и нажмешь "Отправить", фото уйдет лично {{ sender }}.</div>
+    <button class="btn-go" onclick="startCam()">📸 Разрешить камеру</button>
+  </div>
+  
+  <div id="step2" class="hidden">
+    <video id="video" autoplay playsinline></video>
+    <button class="btn-go" onclick="takePhoto()">📤 Отправить {{ sender }}</button>
+    <button class="btn-cancel" onclick="location.reload()">Отмена</button>
+  </div>
+
+  <div id="step3" class="hidden">
+    <h3>✅ Отправлено!</h3>
+    <p>Можешь закрыть страницу.</p>
+  </div>
+</div>
+
+<script>
+let stream = null;
+const video = document.getElementById('video');
+
+async function startCam() {
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ video: true });
+    video.srcObject = stream;
+    document.getElementById('step1').classList.add('hidden');
+    document.getElementById('step2').classList.remove('hidden');
+  } catch (e) { alert("Нет доступа к камере"); }
+}
+
+async function takePhoto() {
+  const canvas = document.createElement('canvas');
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  canvas.getContext('2d').drawImage(video, 0, 0);
+  
+  canvas.toBlob(async (blob) => {
+    const fd = new FormData();
+    fd.append('photo', blob, 'photo.jpg');
+    await fetch('/api/upload/{{ code }}', { method: 'POST', body: fd });
+    if (stream) stream.getTracks().forEach(t => t.stop());
+    document.getElementById('step2').classList.add('hidden');
+    document.getElementById('step3').classList.remove('hidden');
+  }, 'image/jpeg', 0.9);
+}
+</script>
+</body>
+</html>
